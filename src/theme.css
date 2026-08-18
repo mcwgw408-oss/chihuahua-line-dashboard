@@ -270,6 +270,35 @@ h2 {
   font-weight: 800;
 }
 
+.fund-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fund-grid article {
+  background: #fffaf4;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.fund-grid span {
+  color: var(--ink-soft);
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.fund-grid strong {
+  display: block;
+  font-size: clamp(1.25rem, 2.2vw, 1.8rem);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
 .editor-grid {
   display: grid;
   gap: 18px;
@@ -375,6 +404,14 @@ input {
   background: var(--rose);
 }
 
+.mini-fill.app {
+  background: var(--sky);
+}
+
+.mini-fill.kindle {
+  background: #2f855a;
+}
+
 .mini-fill.other {
   background: var(--violet);
 }
@@ -386,7 +423,8 @@ input {
 
   .hero-band,
   .editor-grid,
-  .kpi-grid {
+  .kpi-grid,
+  .fund-grid {
     grid-template-columns: 1fr;
   }
 

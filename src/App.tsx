@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-type IncomeKey = "skill" | "brain" | "note" | "other";
+type IncomeKey = "skill" | "brain" | "note" | "app" | "kindle" | "other";
 
 type Inputs = {
   livingCost: number;
@@ -9,9 +9,10 @@ type Inputs = {
   movingFund: number;
   currentSavings: number;
   chihuahuaFund: number;
-  monthsToGoal: number;
   incomes: Record<IncomeKey, number>;
 };
+
+const storageKey = "chihuahua-line-dashboard";
 
 const initialInputs: Inputs = {
   livingCost: 130000,
@@ -20,11 +21,12 @@ const initialInputs: Inputs = {
   movingFund: 450000,
   currentSavings: 180000,
   chihuahuaFund: 320000,
-  monthsToGoal: 10,
   incomes: {
     skill: 90000,
     brain: 45000,
     note: 25000,
+    app: 0,
+    kindle: 0,
     other: 15000,
   },
 };
@@ -33,21 +35,29 @@ const incomeLabels: Record<IncomeKey, string> = {
   skill: "Skill販売",
   brain: "Brainアフィリエイト",
   note: "note",
+  app: "アプリ販売",
+  kindle: "Kindle",
   other: "その他",
 };
 
-const inputLabels: Array<{
-  key: keyof Omit<Inputs, "incomes">;
+const monthlyInputLabels: Array<{
+  key: "livingCost" | "pension" | "rent";
   label: string;
   suffix: string;
 }> = [
   { key: "livingCost", label: "月の生活費", suffix: "円/月" },
-  { key: "pension", label: "年金", suffix: "円/月" },
   { key: "rent", label: "家賃", suffix: "円/月" },
+  { key: "pension", label: "年金", suffix: "円/月" },
+];
+
+const oneTimeInputLabels: Array<{
+  key: "movingFund" | "currentSavings" | "chihuahuaFund";
+  label: string;
+  suffix: string;
+}> = [
   { key: "movingFund", label: "引っ越し資金", suffix: "円" },
-  { key: "currentSavings", label: "現在の貯金", suffix: "円" },
   { key: "chihuahuaFund", label: "チワワのお迎え資金", suffix: "円" },
-  { key: "monthsToGoal", label: "目標までの月数", suffix: "か月" },
+  { key: "currentSavings", label: "現在額", suffix: "円" },
 ];
 
 function yen(value: number) {
@@ -60,6 +70,22 @@ function yen(value: number) {
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, value));
+}
+
+function normalizeInputs(value: unknown): Inputs {
+  if (!value || typeof value !== "object") {
+    return initialInputs;
+  }
+
+  const partial = value as Partial<Inputs>;
+  return {
+    ...initialInputs,
+    ...partial,
+    incomes: {
+      ...initialInputs.incomes,
+      ...(partial.incomes ?? {}),
+    },
+  };
 }
 
 function NumberField({
@@ -94,59 +120,62 @@ export default function App() {
   const [inputs, setInputs] = useState<Inputs>(initialInputs);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("chihuahua-line-dashboard");
-    if (saved) {
-      setInputs({ ...initialInputs, ...JSON.parse(saved) });
+    const saved = window.localStorage.getItem(storageKey);
+    if (!saved) {
+      return;
+    }
+
+    try {
+      setInputs(normalizeInputs(JSON.parse(saved)));
+    } catch {
+      setInputs(initialInputs);
     }
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(
-      "chihuahua-line-dashboard",
-      JSON.stringify(inputs),
-    );
+    window.localStorage.setItem(storageKey, JSON.stringify(inputs));
   }, [inputs]);
 
-  const totals = useMemo(() => {
-    const businessIncome = Object.values(inputs.incomes).reduce(
+  const monthly = useMemo(() => {
+    const actualBusinessIncome = Object.values(inputs.incomes).reduce(
       (sum, value) => sum + value,
       0,
     );
-    const requiredLifeCost = inputs.livingCost + inputs.rent;
-    const oneTimeGoal = inputs.movingFund + inputs.chihuahuaFund;
-    const remainingFund = Math.max(oneTimeGoal - inputs.currentSavings, 0);
-    const monthlyReserve = Math.ceil(
-      remainingFund / Math.max(inputs.monthsToGoal, 1),
-    );
+    const requiredLivingCost = inputs.livingCost + inputs.rent;
     const requiredBusinessIncome = Math.max(
-      requiredLifeCost + monthlyReserve - inputs.pension,
+      requiredLivingCost - inputs.pension,
       0,
     );
-    const gap = businessIncome - requiredBusinessIncome;
+    const gap = actualBusinessIncome - requiredBusinessIncome;
     const achievement =
       requiredBusinessIncome === 0
         ? 100
-        : (businessIncome / requiredBusinessIncome) * 100;
-    const savingsProgress =
-      oneTimeGoal === 0 ? 100 : (inputs.currentSavings / oneTimeGoal) * 100;
+        : (actualBusinessIncome / requiredBusinessIncome) * 100;
 
     return {
-      businessIncome,
-      requiredLifeCost,
-      oneTimeGoal,
-      remainingFund,
-      monthlyReserve,
+      actualBusinessIncome,
+      requiredLivingCost,
       requiredBusinessIncome,
       gap,
       achievement,
-      savingsProgress,
     };
   }, [inputs]);
 
-  const updateInput = (
-    key: keyof Omit<Inputs, "incomes">,
-    value: number,
-  ) => {
+  const oneTime = useMemo(() => {
+    const target = inputs.movingFund + inputs.chihuahuaFund;
+    const current = inputs.currentSavings;
+    const remaining = Math.max(target - current, 0);
+    const progress = target === 0 ? 100 : (current / target) * 100;
+
+    return {
+      target,
+      current,
+      remaining,
+      progress,
+    };
+  }, [inputs]);
+
+  const updateInput = (key: keyof Omit<Inputs, "incomes">, value: number) => {
     setInputs((current) => ({ ...current, [key]: Math.max(value || 0, 0) }));
   };
 
@@ -164,86 +193,96 @@ export default function App() {
           <p className="eyebrow">Chihuahua Line Dashboard</p>
           <h1>チワワライン Dashboard</h1>
           <p>
-            生活、引っ越し、犬との暮らしに必要な収益をひとつの線で見える化。
-            数字を動かすたび、目標までの距離が変わります。
+            月次の生活収支と、引っ越し・チワワお迎えの一時資金を分けて見える化。
+            毎月の必要額と、別枠の準備金がひと目で分かります。
           </p>
         </div>
-        <div className="goal-card" aria-label="達成率">
-          <span>目標達成率</span>
-          <strong>{Math.round(totals.achievement)}%</strong>
+        <div className="goal-card" aria-label="月次達成率">
+          <span>月次の達成率</span>
+          <strong>{Math.round(monthly.achievement)}%</strong>
           <div className="progress-track">
             <div
               className="progress-fill"
-              style={{ width: `${clampPercent(totals.achievement)}%` }}
+              style={{ width: `${clampPercent(monthly.achievement)}%` }}
             />
           </div>
           <p>
-            {totals.gap >= 0
-              ? `目標を ${yen(totals.gap)} 上回っています`
-              : `あと ${yen(Math.abs(totals.gap))} で到達`}
+            {monthly.gap >= 0
+              ? `必要額を ${yen(monthly.gap)} 上回っています`
+              : `あと ${yen(Math.abs(monthly.gap))} で月次達成`}
           </p>
         </div>
       </section>
 
-      <section className="kpi-grid" aria-label="主要指標">
+      <section className="kpi-grid" aria-label="月次の生活収支">
         <article>
-          <span>必要生活費</span>
-          <strong>{yen(totals.requiredLifeCost)}</strong>
-          <small>生活費 + 家賃</small>
+          <span>毎月必要な生活費</span>
+          <strong>{yen(monthly.requiredLivingCost)}</strong>
+          <small>月の生活費 + 家賃</small>
         </article>
         <article>
           <span>必要な事業収入</span>
-          <strong>{yen(totals.requiredBusinessIncome)}</strong>
-          <small>生活費 + 積立 - 年金</small>
+          <strong>{yen(monthly.requiredBusinessIncome)}</strong>
+          <small>毎月必要な生活費 - 年金</small>
         </article>
         <article>
-          <span>現在の事業収入</span>
-          <strong>{yen(totals.businessIncome)}</strong>
-          <small>項目別収益の合計</small>
+          <span>実際の事業収入合計</span>
+          <strong>{yen(monthly.actualBusinessIncome)}</strong>
+          <small>各事業収入の合計</small>
         </article>
-        <article className={totals.gap >= 0 ? "positive" : "negative"}>
-          <span>目標との差額</span>
+        <article className={monthly.gap >= 0 ? "positive" : "negative"}>
+          <span>必要額との差額</span>
           <strong>
-            {totals.gap >= 0 ? "+" : ""}
-            {yen(totals.gap)}
+            {monthly.gap >= 0 ? "+" : ""}
+            {yen(monthly.gap)}
           </strong>
-          <small>{totals.gap >= 0 ? "余裕あり" : "伸ばす余地あり"}</small>
+          <small>{monthly.gap >= 0 ? "月次クリア" : "事業収入で補う額"}</small>
         </article>
       </section>
 
       <section className="line-panel">
         <div className="line-header">
           <div>
-            <p className="eyebrow">Goal Route</p>
-            <h2>お迎えまでのチワワライン</h2>
+            <p className="eyebrow">One-Time Fund</p>
+            <h2>引っ越し・チワワお迎えの一時資金</h2>
           </div>
-          <strong>{yen(totals.remainingFund)} 残り</strong>
+          <strong>{yen(oneTime.remaining)} 残り</strong>
         </div>
         <div className="route-line">
           <div
             className="route-fill"
-            style={{ width: `${clampPercent(totals.savingsProgress)}%` }}
+            style={{ width: `${clampPercent(oneTime.progress)}%` }}
           />
-          <span className="station start">今</span>
+          <span className="station start">現在</span>
           <span className="station middle">引っ越し</span>
           <span className="station end">お迎え</span>
         </div>
-        <div className="route-meta">
-          <span>一時資金目標 {yen(totals.oneTimeGoal)}</span>
-          <span>月あたり積立 {yen(totals.monthlyReserve)}</span>
+        <div className="fund-grid" aria-label="一時資金の状況">
+          <article>
+            <span>目標額</span>
+            <strong>{yen(oneTime.target)}</strong>
+          </article>
+          <article>
+            <span>現在額</span>
+            <strong>{yen(oneTime.current)}</strong>
+          </article>
+          <article>
+            <span>残額</span>
+            <strong>{yen(oneTime.remaining)}</strong>
+          </article>
         </div>
       </section>
 
       <section className="editor-grid">
         <div className="panel">
           <div className="panel-heading">
-            <h2>生活と目標</h2>
+            <h2>月次の生活収支</h2>
             <button type="button" onClick={() => setInputs(initialInputs)}>
               初期値に戻す
             </button>
           </div>
           <div className="field-grid">
-            {inputLabels.map((item) => (
+            {monthlyInputLabels.map((item) => (
               <NumberField
                 key={item.key}
                 label={item.label}
@@ -257,15 +296,16 @@ export default function App() {
 
         <div className="panel">
           <div className="panel-heading">
-            <h2>収益入力</h2>
-            <span>{yen(totals.businessIncome)}</span>
+            <h2>事業収入</h2>
+            <span>{yen(monthly.actualBusinessIncome)}</span>
           </div>
           <div className="income-list">
             {(Object.keys(incomeLabels) as IncomeKey[]).map((key) => {
               const percent =
-                totals.requiredBusinessIncome === 0
+                monthly.requiredBusinessIncome === 0
                   ? 100
-                  : (inputs.incomes[key] / totals.requiredBusinessIncome) * 100;
+                  : (inputs.incomes[key] / monthly.requiredBusinessIncome) *
+                    100;
               return (
                 <label className="income-row" key={key}>
                   <span>{incomeLabels[key]}</span>
@@ -287,6 +327,24 @@ export default function App() {
                 </label>
               );
             })}
+          </div>
+        </div>
+
+        <div className="panel one-time-editor">
+          <div className="panel-heading">
+            <h2>一時資金</h2>
+            <span>{Math.round(oneTime.progress)}%</span>
+          </div>
+          <div className="field-grid">
+            {oneTimeInputLabels.map((item) => (
+              <NumberField
+                key={item.key}
+                label={item.label}
+                suffix={item.suffix}
+                value={inputs[item.key]}
+                onChange={(value) => updateInput(item.key, value)}
+              />
+            ))}
           </div>
         </div>
       </section>
