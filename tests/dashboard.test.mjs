@@ -20,13 +20,25 @@ test("monthly living cost is calculated from editable expense items", async () =
   assert.match(app, /Object\.values\(inputs\.expenses\)\.reduce/);
 });
 
-test("monthly formula keeps rent separate from expense details", async () => {
+test("rent and pension are in separate categories", async () => {
+  const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+
+  assert.match(app, /月次支出/);
+  assert.match(app, /事業外収入/);
+  assert.match(app, /家賃/);
+  assert.match(app, /年金/);
+  assert.doesNotMatch(app, /家賃・年金/);
+});
+
+test("monthly formula uses expense total plus rent minus pension", async () => {
   const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
 
   assert.match(app, /月の生活費 \+ 家賃/);
   assert.match(app, /毎月必要な生活費 - 年金/);
   assert.match(app, /const requiredLivingCost = monthlyLivingCost \+ inputs\.rent/);
   assert.match(app, /requiredLivingCost - inputs\.pension/);
+  assert.match(app, /rent: 200000/);
+  assert.match(app, /pension: 77000/);
   assert.doesNotMatch(app, /monthlyReserve/);
 });
 

@@ -43,8 +43,8 @@ const initialExpenses: Record<ExpenseKey, number> = {
 
 const initialInputs: Inputs = {
   expenses: initialExpenses,
-  pension: 70000,
-  rent: 85000,
+  pension: 77000,
+  rent: 200000,
   movingFund: 450000,
   currentSavings: 180000,
   chihuahuaFund: 320000,
@@ -80,15 +80,6 @@ const incomeLabels: Record<IncomeKey, string> = {
   kindle: "Kindle",
   other: "その他",
 };
-
-const monthlyInputLabels: Array<{
-  key: "rent" | "pension";
-  label: string;
-  suffix: string;
-}> = [
-  { key: "rent", label: "家賃", suffix: "円/月" },
-  { key: "pension", label: "年金", suffix: "円/月" },
-];
 
 const oneTimeInputLabels: Array<{
   key: "movingFund" | "currentSavings" | "chihuahuaFund";
@@ -227,7 +218,10 @@ export default function App() {
     };
   }, [inputs]);
 
-  const updateInput = (key: keyof Omit<Inputs, "expenses" | "incomes">, value: number) => {
+  const updateInput = (
+    key: keyof Omit<Inputs, "expenses" | "incomes">,
+    value: number,
+  ) => {
     setInputs((current) => ({ ...current, [key]: Math.max(value || 0, 0) }));
   };
 
@@ -252,8 +246,8 @@ export default function App() {
           <p className="eyebrow">Chihuahua Line Dashboard</p>
           <h1>チワワライン Dashboard</h1>
           <p>
-            月の生活費を内訳から組み立て、家賃・年金・事業収入へつなげて月次の必要額を確認。
-            一時資金は別枠で、引っ越しとチワワお迎えの準備状況を追えます。
+            支出は生活費内訳と家賃で整理し、年金は事業外収入として別管理。
+            毎月必要な生活費から年金を引いて、必要な事業収入を確認します。
           </p>
         </div>
         <div className="goal-card" aria-label="月次達成率">
@@ -280,9 +274,19 @@ export default function App() {
           <small>内訳の合計</small>
         </article>
         <article>
+          <span>家賃</span>
+          <strong>{yen(inputs.rent)}</strong>
+          <small>月次支出</small>
+        </article>
+        <article>
           <span>毎月必要な生活費</span>
           <strong>{yen(monthly.requiredLivingCost)}</strong>
           <small>月の生活費 + 家賃</small>
+        </article>
+        <article>
+          <span>年金</span>
+          <strong>{yen(inputs.pension)}</strong>
+          <small>事業外収入</small>
         </article>
         <article>
           <span>必要な事業収入</span>
@@ -363,19 +367,31 @@ export default function App() {
 
         <div className="panel">
           <div className="panel-heading">
-            <h2>家賃・年金</h2>
-            <span>{yen(monthly.requiredLivingCost)}</span>
+            <h2>月次支出</h2>
+            <span>{yen(inputs.rent)}</span>
           </div>
           <div className="field-grid">
-            {monthlyInputLabels.map((item) => (
-              <NumberField
-                key={item.key}
-                label={item.label}
-                suffix={item.suffix}
-                value={inputs[item.key]}
-                onChange={(value) => updateInput(item.key, value)}
-              />
-            ))}
+            <NumberField
+              label="家賃"
+              suffix="円/月"
+              value={inputs.rent}
+              onChange={(value) => updateInput("rent", value)}
+            />
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel-heading">
+            <h2>事業外収入</h2>
+            <span>{yen(inputs.pension)}</span>
+          </div>
+          <div className="field-grid">
+            <NumberField
+              label="年金"
+              suffix="円/月"
+              value={inputs.pension}
+              onChange={(value) => updateInput("pension", value)}
+            />
           </div>
         </div>
 
