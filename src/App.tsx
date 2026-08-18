@@ -19,6 +19,7 @@ type Inputs = {
   expenses: Record<ExpenseKey, number>;
   pension: number;
   rent: number;
+  totalSavings: number;
   movingFund: number;
   currentSavings: number;
   chihuahuaFund: number;
@@ -45,6 +46,7 @@ const initialInputs: Inputs = {
   expenses: initialExpenses,
   pension: 77000,
   rent: 200000,
+  totalSavings: 500000,
   movingFund: 450000,
   currentSavings: 180000,
   chihuahuaFund: 320000,
@@ -88,7 +90,7 @@ const oneTimeInputLabels: Array<{
 }> = [
   { key: "movingFund", label: "引っ越し資金", suffix: "円" },
   { key: "chihuahuaFund", label: "チワワのお迎え資金", suffix: "円" },
-  { key: "currentSavings", label: "現在額", suffix: "円" },
+  { key: "currentSavings", label: "一時資金の現在額", suffix: "円" },
 ];
 
 function yen(value: number) {
@@ -247,7 +249,7 @@ export default function App() {
           <h1>チワワライン Dashboard</h1>
           <p>
             支出は生活費内訳と家賃で整理し、年金は事業外収入として別管理。
-            毎月必要な生活費から年金を引いて、必要な事業収入を確認します。
+            現在の貯金は月次計算に混ぜず、資産状況の参考として確認します。
           </p>
         </div>
         <div className="goal-card" aria-label="月次達成率">
@@ -306,6 +308,11 @@ export default function App() {
           </strong>
           <small>{monthly.gap >= 0 ? "月次クリア" : "事業収入で補う額"}</small>
         </article>
+        <article>
+          <span>現在の貯金</span>
+          <strong>{yen(inputs.totalSavings)}</strong>
+          <small>参考表示・月次計算には含めない</small>
+        </article>
       </section>
 
       <section className="line-panel">
@@ -321,7 +328,7 @@ export default function App() {
             className="route-fill"
             style={{ width: `${clampPercent(oneTime.progress)}%` }}
           />
-          <span className="station start">現在</span>
+          <span className="station start">確保済み</span>
           <span className="station middle">引っ越し</span>
           <span className="station end">お迎え</span>
         </div>
@@ -331,7 +338,7 @@ export default function App() {
             <strong>{yen(oneTime.target)}</strong>
           </article>
           <article>
-            <span>現在額</span>
+            <span>一時資金の現在額</span>
             <strong>{yen(oneTime.current)}</strong>
           </article>
           <article>
@@ -362,6 +369,21 @@ export default function App() {
                 onChange={(value) => updateExpense(key, value)}
               />
             ))}
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel-heading">
+            <h2>資産状況</h2>
+            <span>{yen(inputs.totalSavings)}</span>
+          </div>
+          <div className="field-grid">
+            <NumberField
+              label="現在の貯金"
+              suffix="円"
+              value={inputs.totalSavings}
+              onChange={(value) => updateInput("totalSavings", value)}
+            />
           </div>
         </div>
 
