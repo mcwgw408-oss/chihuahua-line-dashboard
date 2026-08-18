@@ -161,7 +161,7 @@ h2 {
 .kpi-grid {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
 }
 
 .kpi-grid article,
@@ -313,6 +313,13 @@ h2 {
   margin-bottom: 20px;
 }
 
+.panel-heading p {
+  color: var(--leaf);
+  font-size: 1.2rem;
+  font-weight: 900;
+  margin: 6px 0 0;
+}
+
 .panel-heading button {
   background: #25201b;
   border: 0;
@@ -328,6 +335,16 @@ h2 {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.expense-editor {
+  grid-column: 1 / -1;
+}
+
+.expense-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .number-field,
@@ -436,6 +453,10 @@ input {
     grid-template-columns: 1fr;
   }
 
+  .expense-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .station {
     height: 44px;
     width: 64px;
@@ -451,6 +472,10 @@ input {
   }
 
   .income-row {
+    grid-template-columns: 1fr;
+  }
+
+  .expense-grid {
     grid-template-columns: 1fr;
   }
 

@@ -2,8 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 
 type IncomeKey = "skill" | "brain" | "note" | "app" | "kindle" | "other";
 
+type ExpenseKey =
+  | "food"
+  | "dailyGoods"
+  | "jcom"
+  | "water"
+  | "medical"
+  | "business"
+  | "hobby"
+  | "transport"
+  | "beauty"
+  | "chihuahua"
+  | "savings";
+
 type Inputs = {
-  livingCost: number;
+  expenses: Record<ExpenseKey, number>;
   pension: number;
   rent: number;
   movingFund: number;
@@ -14,8 +27,22 @@ type Inputs = {
 
 const storageKey = "chihuahua-line-dashboard";
 
+const initialExpenses: Record<ExpenseKey, number> = {
+  food: 45000,
+  dailyGoods: 10000,
+  jcom: 15000,
+  water: 5000,
+  medical: 10000,
+  business: 30000,
+  hobby: 30000,
+  transport: 8000,
+  beauty: 10000,
+  chihuahua: 40000,
+  savings: 50000,
+};
+
 const initialInputs: Inputs = {
-  livingCost: 130000,
+  expenses: initialExpenses,
   pension: 70000,
   rent: 85000,
   movingFund: 450000,
@@ -31,6 +58,20 @@ const initialInputs: Inputs = {
   },
 };
 
+const expenseLabels: Record<ExpenseKey, string> = {
+  food: "食費",
+  dailyGoods: "日用品",
+  jcom: "J:COM（電気・ガス・スマホ・TV）",
+  water: "水道",
+  medical: "医療費",
+  business: "仕事・事業費",
+  hobby: "趣味・娯楽費",
+  transport: "交通費",
+  beauty: "服・美容費",
+  chihuahua: "チワワ費",
+  savings: "貯蓄・予備費",
+};
+
 const incomeLabels: Record<IncomeKey, string> = {
   skill: "Skill販売",
   brain: "Brainアフィリエイト",
@@ -41,11 +82,10 @@ const incomeLabels: Record<IncomeKey, string> = {
 };
 
 const monthlyInputLabels: Array<{
-  key: "livingCost" | "pension" | "rent";
+  key: "rent" | "pension";
   label: string;
   suffix: string;
 }> = [
-  { key: "livingCost", label: "月の生活費", suffix: "円/月" },
   { key: "rent", label: "家賃", suffix: "円/月" },
   { key: "pension", label: "年金", suffix: "円/月" },
 ];
@@ -77,10 +117,17 @@ function normalizeInputs(value: unknown): Inputs {
     return initialInputs;
   }
 
-  const partial = value as Partial<Inputs>;
+  const partial = value as Partial<Inputs> & {
+    livingCost?: number;
+  };
+
   return {
     ...initialInputs,
     ...partial,
+    expenses: {
+      ...initialInputs.expenses,
+      ...(partial.expenses ?? {}),
+    },
     incomes: {
       ...initialInputs.incomes,
       ...(partial.incomes ?? {}),
@@ -137,11 +184,15 @@ export default function App() {
   }, [inputs]);
 
   const monthly = useMemo(() => {
+    const monthlyLivingCost = Object.values(inputs.expenses).reduce(
+      (sum, value) => sum + value,
+      0,
+    );
     const actualBusinessIncome = Object.values(inputs.incomes).reduce(
       (sum, value) => sum + value,
       0,
     );
-    const requiredLivingCost = inputs.livingCost + inputs.rent;
+    const requiredLivingCost = monthlyLivingCost + inputs.rent;
     const requiredBusinessIncome = Math.max(
       requiredLivingCost - inputs.pension,
       0,
@@ -153,6 +204,7 @@ export default function App() {
         : (actualBusinessIncome / requiredBusinessIncome) * 100;
 
     return {
+      monthlyLivingCost,
       actualBusinessIncome,
       requiredLivingCost,
       requiredBusinessIncome,
@@ -175,8 +227,15 @@ export default function App() {
     };
   }, [inputs]);
 
-  const updateInput = (key: keyof Omit<Inputs, "incomes">, value: number) => {
+  const updateInput = (key: keyof Omit<Inputs, "expenses" | "incomes">, value: number) => {
     setInputs((current) => ({ ...current, [key]: Math.max(value || 0, 0) }));
+  };
+
+  const updateExpense = (key: ExpenseKey, value: number) => {
+    setInputs((current) => ({
+      ...current,
+      expenses: { ...current.expenses, [key]: Math.max(value || 0, 0) },
+    }));
   };
 
   const updateIncome = (key: IncomeKey, value: number) => {
@@ -193,8 +252,8 @@ export default function App() {
           <p className="eyebrow">Chihuahua Line Dashboard</p>
           <h1>チワワライン Dashboard</h1>
           <p>
-            月次の生活収支と、引っ越し・チワワお迎えの一時資金を分けて見える化。
-            毎月の必要額と、別枠の準備金がひと目で分かります。
+            月の生活費を内訳から組み立て、家賃・年金・事業収入へつなげて月次の必要額を確認。
+            一時資金は別枠で、引っ越しとチワワお迎えの準備状況を追えます。
           </p>
         </div>
         <div className="goal-card" aria-label="月次達成率">
@@ -215,6 +274,11 @@ export default function App() {
       </section>
 
       <section className="kpi-grid" aria-label="月次の生活収支">
+        <article>
+          <span>月の生活費</span>
+          <strong>{yen(monthly.monthlyLivingCost)}</strong>
+          <small>内訳の合計</small>
+        </article>
         <article>
           <span>毎月必要な生活費</span>
           <strong>{yen(monthly.requiredLivingCost)}</strong>
@@ -274,12 +338,33 @@ export default function App() {
       </section>
 
       <section className="editor-grid">
-        <div className="panel">
+        <div className="panel expense-editor">
           <div className="panel-heading">
-            <h2>月次の生活収支</h2>
+            <div>
+              <h2>月の生活費 内訳</h2>
+              <p>{yen(monthly.monthlyLivingCost)}</p>
+            </div>
             <button type="button" onClick={() => setInputs(initialInputs)}>
               初期値に戻す
             </button>
+          </div>
+          <div className="expense-grid">
+            {(Object.keys(expenseLabels) as ExpenseKey[]).map((key) => (
+              <NumberField
+                key={key}
+                label={expenseLabels[key]}
+                suffix="円/月"
+                value={inputs.expenses[key]}
+                onChange={(value) => updateExpense(key, value)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel-heading">
+            <h2>家賃・年金</h2>
+            <span>{yen(monthly.requiredLivingCost)}</span>
           </div>
           <div className="field-grid">
             {monthlyInputLabels.map((item) => (
